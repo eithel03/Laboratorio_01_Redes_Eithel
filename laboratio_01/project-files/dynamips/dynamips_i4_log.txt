@@ -1,0 +1,24 @@
+2026-10-07T02:42:46.350Z HYPERVISOR: Release 0.2.25-amd64/Linux (tag 2023010200)
+2026-10-07T02:42:46.350Z HYPERVISOR: Started on IP = 127.0.0.1, TCP port = 59773.
+2026-10-07T02:42:46.357Z HYPERVISOR: exec_cmd: hypervisor version 
+2026-10-07T02:42:46.357Z HYPERVISOR: exec_cmd: hypervisor working_dir /home/eithelherrerarojas/Documentos/Eithel 2026/Redes programables/lab1/laboratio_01/project-files/dynamips 
+2026-10-07T02:42:46.357Z GENERAL: working_dir=/home/eithelherrerarojas/Documentos/Eithel 2026/Redes programables/lab1/laboratio_01/project-files/dynamips
+2026-10-07T02:42:46.358Z HYPERVISOR: exec_cmd: hypervisor working_dir /home/eithelherrerarojas/Documentos/Eithel 2026/Redes programables/lab1/laboratio_01/project-files/dynamips/46e55969-9c89-461b-8e42-5e76521ef33b 
+2026-10-07T02:42:46.358Z GENERAL: working_dir=/home/eithelherrerarojas/Documentos/Eithel 2026/Redes programables/lab1/laboratio_01/project-files/dynamips/46e55969-9c89-461b-8e42-5e76521ef33b
+2026-10-07T02:42:46.358Z HYPERVISOR: exec_cmd: vm create R1 1 c3725 
+2026-10-07T02:42:46.358Z VM: VM R1 created.
+2026-10-07T02:42:46.358Z HYPERVISOR: exec_cmd: vm set_con_tcp_port R1 5008 
+2026-10-07T02:42:46.358Z HYPERVISOR: exec_cmd: c3725 get_mac_addr R1 
+2026-10-07T02:42:46.358Z HYPERVISOR: exec_cmd: vm set_nvram R1 256 
+2026-10-07T02:42:46.359Z HYPERVISOR: exec_cmd: vm set_ios R1 /home/eithelherrerarojas/GNS3/images/IOS/c3725-adventerprisek9-mz.124-15.T14.image 
+2026-10-07T02:42:46.359Z HYPERVISOR: exec_cmd: vm get_status R1 
+2026-10-07T02:42:46.359Z HYPERVISOR: exec_cmd: vm set_idle_pc R1 0x60c09aa0 
+2026-10-07T02:42:46.360Z HYPERVISOR: exec_cmd: vm set_disk0 R1 0 
+2026-10-07T02:42:46.390Z HYPERVISOR: exec_cmd: vm set_ios R1 /home/eithelherrerarojas/GNS3/images/IOS/c3725-adventerprisek9-mz.124-15.T14.image 
+2026-10-07T02:44:31.990Z HYPERVISOR: exec_cmd: nio create_udp udp-1b532258-be8b-4b9f-81c7-12f3715374af 10004 127.0.0.1 10005 
+2026-10-07T02:44:32.201Z HYPERVISOR: exec_cmd: vm slot_add_nio_binding R1 0 0 udp-1b532258-be8b-4b9f-81c7-12f3715374af 
+2026-10-07T02:44:32.202Z HYPERVISOR: exec_cmd: vm get_status R1 
+2026-10-07T02:44:48.464Z HYPERVISOR: exec_cmd: nio create_udp udp-99af524c-bba5-4be8-bad8-0de89808e652 10012 127.0.0.1 10013 
+2026-10-07T02:44:48.465Z HYPERVISOR: exec_cmd: vm slot_add_nio_binding R1 0 1 udp-99af524c-bba5-4be8-bad8-0de89808e652 
+2026-10-07T02:44:48.466Z HYPERVISOR: exec_cmd: vm get_status R1 
+2026-10-07T02:44:59.794Z HYPERVISOR: exec_cmd: vm set_ios R1 /home/eithelherrerarojas/GNS3/images/IOS/c3725-adventerprisek9-mz.124-15.T14.image 
