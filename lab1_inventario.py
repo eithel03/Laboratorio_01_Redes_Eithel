@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
-import os
 import getpass
+import os
 import yaml
 
 from netmiko import ConnectHandler
@@ -11,12 +12,37 @@ from netmiko.exceptions import (
 )
 
 
+# ==========================================================
+# COMANDOS POR TIPO DE DISPOSITIVO
+# ==========================================================
+
+COMANDOS = {
+    "mikrotik_routeros": {
+        "nombre": "/system identity print",
+        "recursos": "/system resource print",
+        "interfaces": "/ip address print terse",
+        "ruta_defecto": (
+            "/ip route print terse "
+            "where dst-address=0.0.0.0/0"
+        )
+    }
+}
+
+
+# ==========================================================
+# INVENTARIO
+# ==========================================================
+
 def cargar_inventario():
     with open("inventario.yaml", "r", encoding="utf-8") as archivo:
         datos = yaml.safe_load(archivo)
 
     return datos["equipos"]
 
+
+# ==========================================================
+# CREDENCIALES
+# ==========================================================
 
 def obtener_password(nombre):
     variable = "LAB_PASS_" + nombre.upper().replace("-", "_")
@@ -31,45 +57,184 @@ def obtener_password(nombre):
     return password
 
 
+# ==========================================================
+# PARSERS
+# ==========================================================
+
+def texto_a_dict(salida):
+    datos = {}
+
+    for linea in salida.splitlines():
+        if ":" in linea:
+            clave, valor = linea.split(":", 1)
+            datos[clave.strip()] = valor.strip()
+
+    return datos
+
+
+def parsear_terse(salida):
+    registros = []
+
+    for linea in salida.splitlines():
+
+        linea = linea.strip()
+
+        if not linea:
+            continue
+
+        registro = {}
+
+        for parte in linea.split():
+            if "=" in parte:
+                clave, valor = parte.split("=", 1)
+                registro[clave] = valor
+
+        if registro:
+            registros.append(registro)
+
+    return registros
+
+
+# ==========================================================
+# CONEXIÓN Y RECOLECCIÓN
+# ==========================================================
+
 def conectar_equipo(equipo):
     nombre = equipo["nombre"]
+    device_type = equipo["device_type"]
 
     dispositivo = {
-        "device_type": equipo["device_type"],
+        "device_type": device_type,
         "host": equipo["host"],
         "username": equipo["usuario"],
         "password": obtener_password(nombre),
-        "session_log": f"logs/{nombre}.log"
+        "session_log": f"logs/{nombre}.log",
+        "fast_cli": False
+    }
+
+    resultado = {
+        "equipo": nombre,
+        "host": equipo["host"],
+        "estado": "error"
     }
 
     try:
-        print(f"\nConectando a {nombre} ({equipo['host']})...")
+        print(
+            f"\nConectando a {nombre} "
+            f"({equipo['host']})..."
+        )
+
+        comandos = COMANDOS[device_type]
 
         with ConnectHandler(**dispositivo) as conexion:
 
-            salida = conexion.send_command(
-                "/system identity print"
+            salida_nombre = conexion.send_command(
+                comandos["nombre"]
             )
 
-            print(f"[OK] Conexión exitosa con {nombre}")
-            print(salida)
+            salida_recursos = conexion.send_command(
+                comandos["recursos"]
+            )
+
+            salida_interfaces = conexion.send_command(
+                comandos["interfaces"]
+            )
+
+            salida_ruta = conexion.send_command(
+                comandos["ruta_defecto"]
+            )
+
+        nombre_dict = texto_a_dict(salida_nombre)
+        recursos_dict = texto_a_dict(salida_recursos)
+
+        interfaces = parsear_terse(
+            salida_interfaces
+        )
+
+        rutas = parsear_terse(
+            salida_ruta
+        )
+
+        resultado = {
+            "equipo": nombre,
+            "host": equipo["host"],
+            "estado": "ok",
+            "datos": {
+                "nombre": nombre_dict.get("name"),
+                "uptime": recursos_dict.get("uptime"),
+                "interfaces": interfaces,
+                "ruta_defecto": rutas
+            }
+        }
+
+        print(f"[OK] Conexión exitosa con {nombre}")
+
+        print("\nEstado estructurado:")
+
+        print(
+            f"Nombre: "
+            f"{resultado['datos']['nombre']}"
+        )
+
+        print(
+            f"Uptime: "
+            f"{resultado['datos']['uptime']}"
+        )
+
+        print(
+            f"Interfaces con IP: "
+            f"{len(resultado['datos']['interfaces'])}"
+        )
+
+        print(
+            f"Rutas por defecto: "
+            f"{len(resultado['datos']['ruta_defecto'])}"
+        )
 
     except NetmikoTimeoutException:
-        print(f"[ERROR] Tiempo de espera agotado en {nombre}")
+
+        resultado["estado"] = (
+            "Error: tiempo de espera agotado"
+        )
+
+        print(
+            f"[ERROR] Tiempo de espera agotado "
+            f"en {nombre}"
+        )
 
     except NetmikoAuthenticationException:
-        print(f"[ERROR] Credenciales incorrectas en {nombre}")
+
+        resultado["estado"] = (
+            "Error: credenciales incorrectas"
+        )
+
+        print(
+            f"[ERROR] Credenciales incorrectas "
+            f"en {nombre}"
+        )
 
     except Exception as error:
+
+        resultado["estado"] = f"Error: {error}"
+
         print(f"[ERROR] {nombre}: {error}")
 
+    return resultado
+
+
+# ==========================================================
+# MAIN
+# ==========================================================
 
 def main():
 
     equipos = cargar_inventario()
 
+    resultados = []
+
     for equipo in equipos:
-        conectar_equipo(equipo)
+        resultado = conectar_equipo(equipo)
+        resultados.append(resultado)
 
 
 if __name__ == "__main__":
