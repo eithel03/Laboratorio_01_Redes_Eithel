@@ -2,17 +2,25 @@
     {
         "equipo": "mt-lab",
         "host": "10.60.30.202",
-        "fecha_hora": "2026-10-13T11:13:43-06:00",
+        "fecha_hora": "2026-10-13T12:45:28-06:00",
         "estado": "ok",
         "datos": {
             "nombre": "MikroTik",
-            "uptime": "8m15s",
+            "uptime": "35m45s",
             "interfaces": [
                 {
                     "address": "10.60.30.202/24",
                     "network": "10.60.30.0",
                     "interface": "ether1",
                     "actual-interface": "ether1",
+                    "vrf": "main"
+                },
+                {
+                    "comment": "Eithel-Lab1",
+                    "address": "10.253.0.10/32",
+                    "network": "10.253.0.10",
+                    "interface": "lo-ssh-10",
+                    "actual-interface": "lo-ssh-10",
                     "vrf": "main"
                 }
             ],
