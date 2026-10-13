@@ -5,6 +5,7 @@ import argparse
 import getpass
 import json
 import os
+import re
 from datetime import datetime
 
 import yaml
@@ -29,12 +30,19 @@ COMANDOS = {
             "/ip route print terse "
             "where dst-address=0.0.0.0/0"
         )
+    },
+
+    "cisco_ios": {
+        "nombre": "show running-config | include hostname",
+        "recursos": "show version | include uptime",
+        "interfaces": "show ip interface brief",
+        "ruta_defecto": "show ip route 0.0.0.0"
     }
 }
 
 
 # ==========================================================
-# CONFIGURACIÓN R6
+# CONFIGURACIÓN R6 - MIKROTIK
 # ==========================================================
 
 NUMERO = 10
@@ -80,7 +88,7 @@ def obtener_password(nombre):
 
 
 # ==========================================================
-# PARSERS
+# PARSERS MIKROTIK
 # ==========================================================
 
 def texto_a_dict(salida):
@@ -89,10 +97,7 @@ def texto_a_dict(salida):
     for linea in salida.splitlines():
         if ":" in linea:
             clave, valor = linea.split(":", 1)
-
-            datos[
-                clave.strip()
-            ] = valor.strip()
+            datos[clave.strip()] = valor.strip()
 
     return datos
 
@@ -110,7 +115,6 @@ def parsear_terse(salida):
         registro = {}
 
         for parte in linea.split():
-
             if "=" in parte:
 
                 clave, valor = parte.split(
@@ -126,6 +130,195 @@ def parsear_terse(salida):
     return registros
 
 
+# ==========================================================
+# PARSERS CISCO
+# ==========================================================
+
+def parsear_nombre_cisco(salida):
+    for linea in salida.splitlines():
+        linea = linea.strip()
+
+        if linea.startswith("hostname "):
+            partes = linea.split()
+
+            if len(partes) >= 2:
+                return partes[1]
+
+    return None
+
+
+def parsear_uptime_cisco(salida):
+    for linea in salida.splitlines():
+        linea = linea.strip()
+
+        if "uptime is" in linea:
+            return linea.split("uptime is", 1)[1].strip()
+
+    return None
+
+
+def parsear_interfaces_cisco(salida):
+    interfaces = []
+
+    lineas = salida.splitlines()
+
+    for linea in lineas:
+
+        linea = linea.strip()
+
+        if not linea:
+            continue
+
+        if linea.startswith("Interface"):
+            continue
+
+        partes = linea.split()
+
+        if len(partes) < 6:
+            continue
+
+        interfaz = partes[0]
+        ip = partes[1]
+
+        if ip == "unassigned":
+            continue
+
+        estado = partes[-2]
+        protocolo = partes[-1]
+
+        interfaces.append({
+            "interface": interfaz,
+            "address": ip,
+            "status": estado,
+            "protocol": protocolo
+        })
+
+    return interfaces
+
+
+def parsear_ruta_cisco(salida):
+    rutas = []
+
+    gateway = None
+
+    for linea in salida.splitlines():
+
+        linea = linea.strip()
+
+        if not linea:
+            continue
+
+        # Formato:
+        # * 10.60.30.1
+        coincidencia = re.search(
+            r"^\*\s+(\d+\.\d+\.\d+\.\d+)",
+            linea
+        )
+
+        if coincidencia:
+            gateway = coincidencia.group(1)
+            break
+
+        # Formato alternativo:
+        # via 10.60.30.1
+        coincidencia = re.search(
+            r"via\s+(\d+\.\d+\.\d+\.\d+)",
+            linea
+        )
+
+        if coincidencia:
+            gateway = coincidencia.group(1)
+            break
+
+        # Formato:
+        # Gateway of last resort is 10.60.30.1
+        coincidencia = re.search(
+            r"Gateway of last resort is "
+            r"(\d+\.\d+\.\d+\.\d+)",
+            linea
+        )
+
+        if coincidencia:
+            gateway = coincidencia.group(1)
+            break
+
+    if gateway:
+
+        rutas.append({
+            "dst-address": "0.0.0.0/0",
+            "gateway": gateway
+        })
+
+    return rutas
+
+
+# ==========================================================
+# PARSER GENERAL SEGÚN DEVICE_TYPE
+# ==========================================================
+
+def procesar_datos(
+    device_type,
+    salida_nombre,
+    salida_recursos,
+    salida_interfaces,
+    salida_ruta
+):
+
+    if device_type == "mikrotik_routeros":
+
+        nombre_dict = texto_a_dict(
+            salida_nombre
+        )
+
+        recursos_dict = texto_a_dict(
+            salida_recursos
+        )
+
+        interfaces = parsear_terse(
+            salida_interfaces
+        )
+
+        rutas = parsear_terse(
+            salida_ruta
+        )
+
+        return {
+            "nombre": nombre_dict.get("name"),
+            "uptime": recursos_dict.get("uptime"),
+            "interfaces": interfaces,
+            "ruta_defecto": rutas
+        }
+
+    elif device_type == "cisco_ios":
+
+        return {
+            "nombre": parsear_nombre_cisco(
+                salida_nombre
+            ),
+
+            "uptime": parsear_uptime_cisco(
+                salida_recursos
+            ),
+
+            "interfaces": parsear_interfaces_cisco(
+                salida_interfaces
+            ),
+
+            "ruta_defecto": parsear_ruta_cisco(
+                salida_ruta
+            )
+        }
+
+    else:
+        raise ValueError(
+            f"Device type no soportado: {device_type}"
+        )
+
+
+# ==========================================================
+# GATEWAY
+# ==========================================================
+
 def obtener_gateway(rutas):
     if not rutas:
         return "-"
@@ -137,7 +330,7 @@ def obtener_gateway(rutas):
 
 
 # ==========================================================
-# R6 - CONFIGURACIÓN IDEMPOTENTE
+# R6 - CONFIGURACIÓN IDEMPOTENTE MIKROTIK
 # ==========================================================
 
 def configurar_r6(conexion):
@@ -176,7 +369,7 @@ def configurar_r6(conexion):
         )
 
     # ------------------------------------------------------
-    # DIRECCIÓN IP
+    # IP
     # ------------------------------------------------------
 
     salida_ip = conexion.send_command(
@@ -235,10 +428,6 @@ def configurar_r6(conexion):
             "la configuración R6"
         )
 
-    # ------------------------------------------------------
-    # RESULTADO
-    # ------------------------------------------------------
-
     if cambios == 0:
 
         print(
@@ -264,10 +453,6 @@ def limpiar_r6(conexion):
 
     cambios = 0
 
-    # ------------------------------------------------------
-    # ELIMINAR IP
-    # ------------------------------------------------------
-
     salida_ip = conexion.send_command(
         f"/ip address print terse "
         f'where comment="{COMENTARIO}"'
@@ -291,10 +476,6 @@ def limpiar_r6(conexion):
         print(
             "[=] No existe IP de R6 para eliminar"
         )
-
-    # ------------------------------------------------------
-    # ELIMINAR BRIDGE
-    # ------------------------------------------------------
 
     salida_bridge = conexion.send_command(
         f"/interface bridge print terse "
@@ -391,8 +572,7 @@ def conectar_equipo(
         ) as conexion:
 
             # ==============================================
-            # R6
-            # Solo equipos con rol escritura
+            # R6 SOLO PARA EQUIPOS CON ROL ESCRITURA
             # ==============================================
 
             if equipo["rol"] == "escritura":
@@ -408,61 +588,35 @@ def conectar_equipo(
                     )
 
             # ==============================================
-            # R4 - RECOLECTAR ESTADO
+            # CONSULTAS DE ESTADO
             # ==============================================
 
-            salida_nombre = (
-                conexion.send_command(
-                    comandos["nombre"]
-                )
+            salida_nombre = conexion.send_command(
+                comandos["nombre"]
             )
 
-            salida_recursos = (
-                conexion.send_command(
-                    comandos["recursos"]
-                )
+            salida_recursos = conexion.send_command(
+                comandos["recursos"]
             )
 
-            salida_interfaces = (
-                conexion.send_command(
-                    comandos["interfaces"]
-                )
+            salida_interfaces = conexion.send_command(
+                comandos["interfaces"]
             )
 
-            salida_ruta = (
-                conexion.send_command(
-                    comandos["ruta_defecto"]
-                )
+            salida_ruta = conexion.send_command(
+                comandos["ruta_defecto"]
             )
 
-        nombre_dict = texto_a_dict(
-            salida_nombre
-        )
-
-        recursos_dict = texto_a_dict(
-            salida_recursos
-        )
-
-        interfaces = parsear_terse(
-            salida_interfaces
-        )
-
-        rutas = parsear_terse(
+        datos = procesar_datos(
+            device_type,
+            salida_nombre,
+            salida_recursos,
+            salida_interfaces,
             salida_ruta
         )
 
         resultado["estado"] = "ok"
-
-        resultado["datos"] = {
-            "nombre": nombre_dict.get(
-                "name"
-            ),
-            "uptime": recursos_dict.get(
-                "uptime"
-            ),
-            "interfaces": interfaces,
-            "ruta_defecto": rutas
-        }
+        resultado["datos"] = datos
 
         print(
             f"\n[OK] Conexión exitosa "
@@ -615,7 +769,8 @@ def main():
         help=(
             "Eliminar únicamente "
             "la configuración creada "
-            "por R6"
+            "por R6 en equipos "
+            "con rol escritura"
         )
     )
 
