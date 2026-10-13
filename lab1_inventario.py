@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import getpass
+import json
 import os
+from datetime import datetime
+
 import yaml
 
 from netmiko import ConnectHandler
@@ -95,6 +98,13 @@ def parsear_terse(salida):
     return registros
 
 
+def obtener_gateway(rutas):
+    if not rutas:
+        return "-"
+
+    return rutas[0].get("gateway", "-")
+
+
 # ==========================================================
 # CONEXIÓN Y RECOLECCIÓN
 # ==========================================================
@@ -115,7 +125,16 @@ def conectar_equipo(equipo):
     resultado = {
         "equipo": nombre,
         "host": equipo["host"],
-        "estado": "error"
+        "fecha_hora": datetime.now().astimezone().isoformat(
+            timespec="seconds"
+        ),
+        "estado": "error",
+        "datos": {
+            "nombre": None,
+            "uptime": None,
+            "interfaces": [],
+            "ruta_defecto": []
+        }
     }
 
     try:
@@ -155,41 +174,16 @@ def conectar_equipo(equipo):
             salida_ruta
         )
 
-        resultado = {
-            "equipo": nombre,
-            "host": equipo["host"],
-            "estado": "ok",
-            "datos": {
-                "nombre": nombre_dict.get("name"),
-                "uptime": recursos_dict.get("uptime"),
-                "interfaces": interfaces,
-                "ruta_defecto": rutas
-            }
+        resultado["estado"] = "ok"
+
+        resultado["datos"] = {
+            "nombre": nombre_dict.get("name"),
+            "uptime": recursos_dict.get("uptime"),
+            "interfaces": interfaces,
+            "ruta_defecto": rutas
         }
 
         print(f"[OK] Conexión exitosa con {nombre}")
-
-        print("\nEstado estructurado:")
-
-        print(
-            f"Nombre: "
-            f"{resultado['datos']['nombre']}"
-        )
-
-        print(
-            f"Uptime: "
-            f"{resultado['datos']['uptime']}"
-        )
-
-        print(
-            f"Interfaces con IP: "
-            f"{len(resultado['datos']['interfaces'])}"
-        )
-
-        print(
-            f"Rutas por defecto: "
-            f"{len(resultado['datos']['ruta_defecto'])}"
-        )
 
     except NetmikoTimeoutException:
 
@@ -223,6 +217,68 @@ def conectar_equipo(equipo):
 
 
 # ==========================================================
+# REPORTE JSON
+# ==========================================================
+
+def guardar_reporte(resultados):
+    with open(
+        "reporte_estado.json",
+        "w",
+        encoding="utf-8"
+    ) as archivo:
+
+        json.dump(
+            resultados,
+            archivo,
+            indent=4,
+            ensure_ascii=False
+        )
+
+    print(
+        "\n[OK] Reporte guardado en "
+        "reporte_estado.json"
+    )
+
+
+# ==========================================================
+# TABLA RESUMEN
+# ==========================================================
+
+def mostrar_resumen(resultados):
+
+    print("\n" + "=" * 90)
+    print("RESUMEN DE EQUIPOS")
+    print("=" * 90)
+
+    print(
+        f"{'Equipo':<15}"
+        f"{'IP':<18}"
+        f"{'Estado':<25}"
+        f"{'Interfaces':<15}"
+        f"{'Gateway':<17}"
+    )
+
+    print("-" * 90)
+
+    for resultado in resultados:
+
+        interfaces = resultado["datos"]["interfaces"]
+        rutas = resultado["datos"]["ruta_defecto"]
+
+        gateway = obtener_gateway(rutas)
+
+        print(
+            f"{resultado['equipo']:<15}"
+            f"{resultado['host']:<18}"
+            f"{resultado['estado']:<25}"
+            f"{len(interfaces):<15}"
+            f"{gateway:<17}"
+        )
+
+    print("=" * 90)
+
+
+# ==========================================================
 # MAIN
 # ==========================================================
 
@@ -235,6 +291,10 @@ def main():
     for equipo in equipos:
         resultado = conectar_equipo(equipo)
         resultados.append(resultado)
+
+    guardar_reporte(resultados)
+
+    mostrar_resumen(resultados)
 
 
 if __name__ == "__main__":
