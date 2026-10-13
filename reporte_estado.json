@@ -2,11 +2,11 @@
     {
         "equipo": "mt-lab",
         "host": "10.60.30.202",
-        "fecha_hora": "2026-10-13T12:45:28-06:00",
+        "fecha_hora": "2026-10-13T14:37:43-06:00",
         "estado": "ok",
         "datos": {
             "nombre": "MikroTik",
-            "uptime": "35m45s",
+            "uptime": "4m20s",
             "interfaces": [
                 {
                     "address": "10.60.30.202/24",
@@ -33,6 +33,30 @@
                     "distance": "1",
                     "scope": "30",
                     "target-scope": "10"
+                }
+            ]
+        }
+    },
+    {
+        "equipo": "cisco-lab",
+        "host": "10.60.30.203",
+        "fecha_hora": "2026-10-13T14:37:51-06:00",
+        "estado": "ok",
+        "datos": {
+            "nombre": "Cisco-Lab",
+            "uptime": "2 hours, 10 minutes",
+            "interfaces": [
+                {
+                    "interface": "FastEthernet0/0",
+                    "address": "10.60.30.203",
+                    "status": "up",
+                    "protocol": "up"
+                }
+            ],
+            "ruta_defecto": [
+                {
+                    "dst-address": "0.0.0.0/0",
+                    "gateway": "10.60.30.1"
                 }
             ]
         }
