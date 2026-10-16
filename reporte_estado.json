@@ -2,17 +2,25 @@
     {
         "equipo": "mt-lab",
         "host": "10.60.30.202",
-        "fecha_hora": "2026-10-13T14:37:43-06:00",
+        "fecha_hora": "2026-10-15T15:25:32-06:00",
         "estado": "ok",
         "datos": {
             "nombre": "MikroTik",
-            "uptime": "4m20s",
+            "uptime": "1h20m1s",
             "interfaces": [
                 {
                     "address": "10.60.30.202/24",
                     "network": "10.60.30.0",
                     "interface": "ether1",
                     "actual-interface": "ether1",
+                    "vrf": "main"
+                },
+                {
+                    "comment": "LAB1-PC2",
+                    "address": "192.168.30.1/24",
+                    "network": "192.168.30.0",
+                    "interface": "ether2",
+                    "actual-interface": "ether2",
                     "vrf": "main"
                 },
                 {
@@ -40,15 +48,21 @@
     {
         "equipo": "cisco-lab",
         "host": "10.60.30.203",
-        "fecha_hora": "2026-10-13T14:37:51-06:00",
+        "fecha_hora": "2026-10-15T15:25:40-06:00",
         "estado": "ok",
         "datos": {
             "nombre": "Cisco-Lab",
-            "uptime": "2 hours, 10 minutes",
+            "uptime": "1 hour, 0 minutes",
             "interfaces": [
                 {
                     "interface": "FastEthernet0/0",
                     "address": "10.60.30.203",
+                    "status": "up",
+                    "protocol": "up"
+                },
+                {
+                    "interface": "FastEthernet0/1",
+                    "address": "192.168.20.1",
                     "status": "up",
                     "protocol": "up"
                 }
